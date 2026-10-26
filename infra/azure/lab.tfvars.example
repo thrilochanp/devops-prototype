@@ -1,0 +1,6 @@
+# Copy to lab.tfvars (git-ignored) and fill in.
+subscription_id      = "00000000-0000-0000-0000-000000000000"
+location             = "centralindia"
+authorized_ip_ranges = ["203.0.113.10/32"]
+alert_emails         = ["you@example.com"]
+budget_amount        = 5

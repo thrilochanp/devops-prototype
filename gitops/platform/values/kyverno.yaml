@@ -1,0 +1,9 @@
+# Single replicas: enough for a laptop. Production runs 3 admission controller replicas.
+admissionController:
+  replicas: 1
+backgroundController:
+  replicas: 1
+cleanupController:
+  replicas: 1
+reportsController:
+  replicas: 1

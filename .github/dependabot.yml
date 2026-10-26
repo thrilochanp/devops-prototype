@@ -1,0 +1,21 @@
+# Weekly update PRs for everything that can go stale. Each PR runs the full CI + security gates.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /app
+    schedule: { interval: weekly }
+
+  - package-ecosystem: docker
+    directory: /app
+    schedule: { interval: weekly }
+
+  - package-ecosystem: terraform
+    directories: ["/infra/local", "/infra/azure"]
+    schedule: { interval: weekly }

@@ -1,0 +1,27 @@
+# Identical to gitops/apps/orders-dev.yaml: the same Git commit runs on kind and on AKS.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: orders-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thrilochanp/devops-prototype.git
+    targetRevision: main
+    path: deploy/charts/orders-api
+    helm:
+      releaseName: orders-api
+      valueFiles:
+        - ../../envs/dev/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: orders-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

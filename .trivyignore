@@ -1,0 +1,5 @@
+# Accepted Trivy findings. One ID per line, each with a reason and a review date.
+# Format:
+#   AVD-XXX-0000   # why it is accepted here; revisit by YYYY-MM-DD
+#
+# Add entries only after reading the finding in the iac job log (Lab 06, step 7).

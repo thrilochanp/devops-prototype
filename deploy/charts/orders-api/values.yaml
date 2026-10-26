@@ -1,0 +1,57 @@
+# Defaults shared by every environment. Per-env overrides live in deploy/envs/<env>/values.yaml.
+replicaCount: 1
+
+image:
+  repository: ghcr.io/thrilochanp/orders-api
+  tag: ""              # required; set per environment, never "latest"
+  pullPolicy: IfNotPresent
+
+env:
+  chaosEnabled: false
+
+service:
+  port: 80
+  targetPort: 8000
+
+route:
+  enabled: true
+  hostname: orders.localtest.me
+  gateway:
+    name: platform-gw
+    namespace: envoy-gateway-system
+    sectionName: http
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+metrics:
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+  rules:
+    enabled: true
+    errorRateThreshold: 0.05     # 5% of requests returning 5xx
+    latencyP95Seconds: 0.3       # 300 ms
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]

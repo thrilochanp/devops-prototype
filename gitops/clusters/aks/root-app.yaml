@@ -1,0 +1,19 @@
+# AKS app-of-apps (Lab 13): same repo, same chart, a smaller set of apps to keep the session cheap.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-aks
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thrilochanp/devops-prototype.git
+    targetRevision: main
+    path: gitops/clusters/aks/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

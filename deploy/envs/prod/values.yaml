@@ -1,0 +1,18 @@
+# prod: promoted by pull request (copy a tested tag from dev), synced manually in Argo CD.
+replicaCount: 2
+
+image:
+  tag: "sha-0000000"
+
+env:
+  chaosEnabled: false
+
+route:
+  hostname: orders.localtest.me
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 96Mi
+  limits:
+    memory: 192Mi

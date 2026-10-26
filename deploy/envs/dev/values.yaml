@@ -1,0 +1,9 @@
+# dev: auto-synced by Argo CD. CI rewrites image.tag on every merge to main.
+image:
+  tag: "sha-0000000"
+
+env:
+  chaosEnabled: true
+
+route:
+  hostname: orders-dev.localtest.me

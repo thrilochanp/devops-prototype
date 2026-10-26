@@ -1,0 +1,222 @@
+---
+# Bootstrap a macOS workstation (Apple Silicon or Intel) for the DevOps prototype.
+# Prereqs (Lab 01): Xcode Command Line Tools, Homebrew, `brew install ansible`,
+#                   Docker Desktop installed and sized, `brew install gh && gh auth login`.
+# Run: ansible-playbook -i ansible/inventory.ini ansible/bootstrap.yml
+# Re-runnable: every task is idempotent. No sudo needed: Homebrew installs as your user.
+#
+# Supply-chain controls:
+#   - Homebrew sources: homebrew-core (built by Homebrew from upstream source), HashiCorp's
+#     official tap, and the azure-cli cask (Microsoft's build). No other third-party taps.
+#   - Not in Homebrew: tflint, installed to ~/.local/bin from its GitHub release after a SHA-256
+#     check against the release checksums file (same method as Trivy).
+#   - homebrew-core bottles are installed with HOMEBREW_VERIFY_ATTESTATIONS=1, so Homebrew checks
+#     each bottle's GitHub build-provenance attestation (via the gh CLI) before pouring it.
+#   - Trivy is pinned to 0.69.3 (0.69.4 was malicious, CVE-2026-33634) and its download is checked
+#     against the release's SHA-256 checksums file before it is unpacked.
+- name: Bootstrap DevOps prototype workstation (macOS)
+  hosts: local
+  gather_facts: true
+  vars:
+    trivy_version: "0.69.3"
+    # Tools Homebrew does not carry (tflint) go to ~/.local/bin, verified against release checksums.
+    local_bin: "{{ ansible_facts['env']['HOME'] }}/.local/bin"
+    # Docker runtime: Docker Desktop (already installed; free for personal use).
+    # It ships its own docker CLI, buildx and credential helper, so Homebrew must not install them.
+    docker_app: /Applications/Docker.app
+    verified_formulae:          # homebrew-core only: these carry build attestations
+      # Kubernetes
+      - kind
+      - kubernetes-cli
+      - helm
+      - argocd
+      - kubeseal
+      # IaC and cloud
+      - infracost
+      # CI, security and YAML tooling
+      - gitleaks
+      - hadolint
+      - actionlint
+      - yq
+      - jq
+      # Utilities
+      - watch
+      - coreutils
+
+  pre_tasks:
+    - name: This playbook is for macOS only
+      ansible.builtin.assert:
+        that: ansible_facts['system'] == 'Darwin'
+        fail_msg: "Detected {{ ansible_facts['system'] }}. This playbook targets macOS with Homebrew."
+        quiet: true
+
+    - name: Locate Homebrew
+      ansible.builtin.command: brew --prefix
+      register: brew_prefix_out
+      changed_when: false
+
+    - name: Set facts
+      ansible.builtin.set_fact:
+        brew_prefix: "{{ brew_prefix_out.stdout | trim }}"
+        trivy_asset: "trivy_{{ trivy_version }}_{{ 'macOS-ARM64' if ansible_facts['architecture'] in ['arm64', 'aarch64'] else 'macOS-64bit' }}.tar.gz"
+        trivy_base: "https://github.com/aquasecurity/trivy/releases/download/v{{ trivy_version }}"
+        go_arch: "{{ 'arm64' if ansible_facts['architecture'] in ['arm64', 'aarch64'] else 'amd64' }}"
+
+    - name: Python 3.13 or newer must be first on PATH (python.org installer or Homebrew)
+      ansible.builtin.shell: python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])'
+      register: py_ver
+      changed_when: false
+
+    - name: Check the Python version
+      ansible.builtin.assert:
+        that: py_ver.stdout is version('3.13', '>=')
+        fail_msg: "python3 is {{ py_ver.stdout }}. Install Python 3.13 from python.org (or brew install python@3.13) and open a new terminal."
+        success_msg: "python3 is {{ py_ver.stdout }}"
+
+    - name: Is Docker Desktop installed?
+      ansible.builtin.stat:
+        path: "{{ docker_app }}"
+      register: docker_app_stat
+
+    - name: Docker Desktop is required
+      ansible.builtin.assert:
+        that: docker_app_stat.stat.exists
+        fail_msg: "Docker Desktop not found at {{ docker_app }}. Install it from docker.com, open it once, then re-run."
+        quiet: true
+
+    - name: Homebrew's docker CLI must not shadow Docker Desktop's
+      ansible.builtin.command: brew list --formula docker
+      register: brew_docker
+      changed_when: false
+      failed_when: false
+
+    - name: Warn about a conflicting Homebrew docker formula
+      ansible.builtin.debug:
+        msg: "Homebrew 'docker' formula found. Remove it so Docker Desktop's CLI is used: brew uninstall docker docker-buildx"
+      when: brew_docker.rc == 0
+
+    - name: List current Homebrew taps
+      ansible.builtin.command: brew tap
+      register: brew_taps_now
+      changed_when: false
+
+    - name: Report unexpected taps (review, and `brew untap` anything you do not recognise)
+      ansible.builtin.debug:
+        msg: "Unexpected taps: {{ brew_taps_now.stdout_lines | reject('match', '^(homebrew/|hashicorp/tap$)') | list }}"
+      when: brew_taps_now.stdout_lines | reject('match', '^(homebrew/|hashicorp/tap$)') | list | length > 0
+
+  tasks:
+    - name: GitHub CLI first (Homebrew uses it to verify attestations of everything after it)
+      community.general.homebrew:
+        name: gh
+        state: present
+        update_homebrew: true
+
+    - name: Check that gh is logged in (needed for attestation checks)
+      ansible.builtin.command: gh auth status
+      register: gh_auth
+      changed_when: false
+      failed_when: false
+
+    - name: Stop if gh is not logged in
+      ansible.builtin.assert:
+        that: gh_auth.rc == 0
+        fail_msg: "Run `gh auth login` (GitHub.com > HTTPS > browser), then re-run the playbook."
+        quiet: true
+
+    - name: Install homebrew-core formulae, each verified against its build attestation
+      community.general.homebrew:
+        name: "{{ verified_formulae }}"
+        state: present
+      environment:
+        HOMEBREW_VERIFY_ATTESTATIONS: "1"
+
+    - name: HashiCorp's official tap
+      community.general.homebrew_tap:
+        name: hashicorp/tap
+        state: present
+
+    - name: Terraform from HashiCorp's tap (third-party taps carry no Homebrew attestations)
+      community.general.homebrew:
+        name: hashicorp/tap/terraform
+        state: present
+
+    - name: Azure CLI as a Homebrew cask (Microsoft's build; skipped if az is already installed)
+      community.general.homebrew_cask:
+        name: azure-cli
+        state: present
+      when: lookup('ansible.builtin.pipe', 'command -v az || true') | length == 0
+
+    - name: Directory for tools installed outside Homebrew
+      ansible.builtin.file:
+        path: "{{ local_bin }}"
+        state: directory
+        mode: "0755"
+
+    - name: Latest tflint release tag (tflint is not in homebrew-core)
+      ansible.builtin.command: gh api repos/terraform-linters/tflint/releases/latest --jq .tag_name
+      register: tflint_tag
+      changed_when: false
+
+    - name: Check the installed tflint version
+      ansible.builtin.command: "{{ local_bin }}/tflint --version"
+      register: tflint_have
+      changed_when: false
+      failed_when: false
+
+    - name: Download tflint and verify its SHA-256 against the release checksums file
+      ansible.builtin.get_url:
+        url: "https://github.com/terraform-linters/tflint/releases/download/{{ tflint_tag.stdout }}/tflint_darwin_{{ go_arch }}.zip"
+        dest: "/tmp/tflint_darwin_{{ go_arch }}.zip"
+        checksum: "sha256:https://github.com/terraform-linters/tflint/releases/download/{{ tflint_tag.stdout }}/checksums.txt"
+        mode: "0644"
+      when: tflint_tag.stdout[1:] not in (tflint_have.stdout | default(''))
+
+    - name: Unpack the verified tflint binary into ~/.local/bin
+      ansible.builtin.unarchive:
+        src: "/tmp/tflint_darwin_{{ go_arch }}.zip"
+        dest: "{{ local_bin }}"
+        include: [tflint]
+        mode: "0755"
+        remote_src: true
+      when: tflint_tag.stdout[1:] not in (tflint_have.stdout | default(''))
+
+    - name: Check the installed Trivy version
+      ansible.builtin.command: "{{ brew_prefix }}/bin/trivy --version"
+      register: trivy_have
+      changed_when: false
+      failed_when: false
+
+    - name: Download Trivy and verify its SHA-256 against the release checksums file, version {{ trivy_version }}
+      ansible.builtin.get_url:
+        url: "{{ trivy_base }}/{{ trivy_asset }}"
+        dest: "/tmp/{{ trivy_asset }}"
+        checksum: "sha256:{{ trivy_base }}/trivy_{{ trivy_version }}_checksums.txt"
+        mode: "0644"
+      when: trivy_version not in (trivy_have.stdout | default(''))
+
+    - name: Unpack the verified Trivy binary
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ trivy_asset }}"
+        dest: "{{ brew_prefix }}/bin"
+        include: [trivy]
+        mode: "0755"
+        remote_src: true
+      when: trivy_version not in (trivy_have.stdout | default(''))
+
+    - name: Start Docker Desktop if needed, check its size, tune inotify for kind
+      ansible.builtin.command: "{{ playbook_dir }}/../scripts/docker-ready.sh"
+      register: docker_ready
+      changed_when: false
+
+    - name: Docker engine details
+      ansible.builtin.command: "docker info --format '{% raw %}{{.ServerVersion}} on {{.OperatingSystem}}, {{.NCPU}} CPU, {{.Architecture}}{% endraw %}'"
+      register: docker_info
+      changed_when: false
+
+    - name: Report
+      ansible.builtin.debug:
+        msg:
+          - "{{ docker_ready.stdout_lines | join(' | ') }}"
+          - "Docker: {{ docker_info.stdout }}"
+          - "Run: scripts/doctor.sh"

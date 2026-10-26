@@ -1,0 +1,39 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: Disallow latest tag
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Mutable tags make rollbacks and audits impossible. Workloads in orders-* must use an
+      explicit, immutable tag such as sha-1a2b3c4.
+spec:
+  background: true
+  rules:
+    - name: require-image-tag
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: ["orders-*"]
+      validate:
+        failureAction: Enforce
+        message: "An image tag is required (for example sha-1a2b3c4)."
+        pattern:
+          spec:
+            containers:
+              - image: "*:*"
+    - name: validate-image-tag-not-latest
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: ["orders-*"]
+      validate:
+        failureAction: Enforce
+        message: "Using the mutable tag ':latest' is not allowed."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"

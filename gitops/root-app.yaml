@@ -1,0 +1,20 @@
+# App-of-apps: Argo CD watches gitops/apps and creates every Application it finds there.
+# Adding a file to gitops/apps is how a component gets installed; deleting it uninstalls it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thrilochanp/devops-prototype.git
+    targetRevision: main
+    path: gitops/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

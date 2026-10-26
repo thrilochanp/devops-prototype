@@ -1,0 +1,26 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-non-root
+  annotations:
+    policies.kyverno.io/title: Require runAsNonRoot
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      A container escape from a root process is a node compromise. Pods in orders-* must set
+      securityContext.runAsNonRoot to true at pod level.
+spec:
+  background: true
+  rules:
+    - name: pod-run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: ["orders-*"]
+      validate:
+        failureAction: Enforce
+        message: "Set spec.securityContext.runAsNonRoot: true."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true

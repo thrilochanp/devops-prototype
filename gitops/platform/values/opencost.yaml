@@ -1,0 +1,19 @@
+# OpenCost reads usage from the existing Prometheus. On kind it uses default on-prem prices,
+# so numbers are a model of cost per namespace, not a bill.
+opencost:
+  exporter:
+    defaultClusterId: devops-proto
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { memory: 256Mi }
+  prometheus:
+    internal:
+      enabled: true
+      serviceName: kube-prometheus-stack-prometheus
+      namespaceName: monitoring
+      port: 9090
+  ui:
+    enabled: true
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { memory: 128Mi }
