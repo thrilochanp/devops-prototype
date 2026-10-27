@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-EG_VERSION="${EG_VERSION:-v1.8.1}"   # check https://gateway.envoyproxy.io for the current release
+EG_VERSION="${EG_VERSION:-v1.9.3}"   # v1.9: Gateway API v1.6.1, EOL 2027-02-14; check gateway.envoyproxy.io/news/releases/matrix/
 GATEWAY_FILE="${GATEWAY_FILE:-platform/gateway/gateway.yaml}"
 
 helm upgrade --install eg oci://docker.io/envoyproxy/gateway-helm \

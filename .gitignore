@@ -16,6 +16,9 @@ htmlcov/
 infra/**/*-config
 !*.tfvars.example
 crash.log
+# saved plans embed the same secrets as state
+**/tfplan
+*.tfplan
 .terraform.lock.hcl.bak
 
 # Secrets that must never be committed (sealed versions are fine)
