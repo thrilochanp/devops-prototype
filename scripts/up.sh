@@ -9,7 +9,8 @@ scripts/docker-ready.sh
 echo "==> kind cluster (Terraform)"
 terraform -chdir=infra/local init -input=false >/dev/null
 terraform -chdir=infra/local apply -auto-approve -input=false
-kind export kubeconfig --name devops-proto
+CLUSTER="$(terraform -chdir=infra/local output -raw cluster_name)"
+kubectl config use-context "kind-$CLUSTER"
 kubectl wait --for=condition=Ready nodes --all --timeout=180s
 
 echo "==> restore Sealed Secrets key (so committed SealedSecrets still decrypt)"

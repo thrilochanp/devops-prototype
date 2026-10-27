@@ -3,6 +3,7 @@
 # Works on macOS (bash 3.2) and Linux.
 set -uo pipefail
 
+CLUSTER="${KIND_CLUSTER:-k8s-learning}"
 missing=0
 check() {
   local name="$1"; shift
@@ -46,12 +47,12 @@ fi
 
 echo
 echo "Cluster"
-if kind get clusters 2>/dev/null | grep -qx devops-proto; then
+if kind get clusters 2>/dev/null | grep -qx "$CLUSTER"; then
   kubectl get nodes -o wide 2>/dev/null | sed 's/^/  /'
   echo
   kubectl get applications -n argocd 2>/dev/null | sed 's/^/  /' || true
 else
-  echo "  devops-proto not running (make up)"
+  echo "  $CLUSTER not running (make up)"
 fi
 
 exit "$missing"

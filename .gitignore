@@ -12,6 +12,8 @@ htmlcov/
 *.tfstate
 *.tfstate.*
 *.tfvars
+# kubeconfig the kind provider would export next to the code (it contains an admin key)
+infra/**/*-config
 !*.tfvars.example
 crash.log
 .terraform.lock.hcl.bak

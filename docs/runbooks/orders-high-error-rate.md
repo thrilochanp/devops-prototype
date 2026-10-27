@@ -26,7 +26,7 @@
 | Cause | Action |
 | --- | --- |
 | Bad release | Revert the tag change: `git revert <sha>` via PR, then `argocd app sync orders-prod` |
-| Chaos left on (dev only) | `curl -X POST http://orders-dev.localtest.me:8080/chaos -H 'content-type: application/json' -d '{"error_rate":0}'` |
+| Chaos left on (dev only) | `curl -X POST http://orders-dev.localtest.me:8088/chaos -H 'content-type: application/json' -d '{"error_rate":0}'` |
 | Pod crash-looping | Check limits / OOMKilled in `describe`; raise memory limit in values via PR |
 
 ## 4. Close out

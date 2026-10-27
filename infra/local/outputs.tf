@@ -9,3 +9,7 @@ output "api_endpoint" {
 output "gateway_url_example" {
   value = "http://orders-dev.localtest.me:${var.gateway_host_port}/orders"
 }
+
+output "kube_context" {
+  value = kind_cluster.this.context_name
+}

@@ -2,7 +2,7 @@
 # so numbers are a model of cost per namespace, not a bill.
 opencost:
   exporter:
-    defaultClusterId: devops-proto
+    defaultClusterId: k8s-learning
     resources:
       requests: { cpu: 10m, memory: 64Mi }
       limits: { memory: 256Mi }

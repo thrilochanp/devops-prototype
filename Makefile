@@ -15,7 +15,7 @@ doctor: ## Print tool versions and cluster health
 up: ## Create cluster + gateway + Argo CD, then GitOps restores the rest
 	@scripts/up.sh
 
-down: ## Back up the sealing key and destroy the cluster
+down: ## Back up the sealing key and destroy the shared k8s-learning cluster (asks first)
 	@scripts/down.sh
 
 down-vm: ## make down, then quit Docker Desktop to free its RAM
