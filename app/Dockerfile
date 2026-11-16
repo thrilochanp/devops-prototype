@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 # Stage 1: install dependencies into an isolated prefix
-FROM python:3.13-slim AS build
+FROM python:3.15-slim AS build
 WORKDIR /build
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Stage 2: minimal runtime, non-root, no build tools
-FROM python:3.13-slim
+FROM python:3.15-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin app
